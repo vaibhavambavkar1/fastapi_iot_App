@@ -365,3 +365,47 @@ ignore_missing_imports = true
 | **Single Source of Truth** | Tools like `ruff`, `mypy`, `pytest`, and `coverage` all read from one file. |
 | **Consistent Team Standards** | Ensures anyone running `ruff` or `mypy` on any machine (or in CI/CD) uses the exact same rules. |
 | **No CLI Boilerplate** | You can just type `ruff check .` or `mypy app` instead of passing dozens of command-line flags every time. |
+
+
+
+
+Both **Swagger UI** (`/docs`) and **ReDoc** (`/redoc`) read the exact same underlying OpenAPI specification (`/openapi.json`), but they are designed with different visual interfaces, workflows, and use cases.
+
+---
+
+### Comparison Table
+
+| Feature / Aspect | Swagger UI (`/docs`) | ReDoc (`/redoc`) |
+|---|---|---|
+| **Default URL** | `http://localhost:<PORT>/docs` | `http://localhost:<PORT>/redoc` |
+| **Primary Focus** | **Interactive API Testing** | **Clean API Documentation & Reading** |
+| **"Try It Out" Button** | ✅ **Yes** — send live HTTP requests directly from browser | ❌ **No** — read-only view |
+| **Layout Design** | Accordion style (collapsible endpoint panels) | 3-column layout (Navigation menu, Documentation, Code samples) |
+| **Deep Linking & Search** | Basic | Advanced, instant search bar + nested URL anchors |
+| **Schema & Payload View** | Collapsible JSON schemas inside cards | Cleanly formatted side-by-side responses and status codes |
+| **Best For** | **Developers during development and debugging** | **External consumers, partners, and public reference docs** |
+
+---
+
+### Detailed Differences
+
+#### 1. Swagger UI (`/docs`) — *The Interactive Sandbox*
+- **Built for:** Day-to-day backend development and debugging.
+- **Key Advantage:** The **"Try it out"** button. You can fill in path parameters, request bodies, query params, and execute real HTTP calls against your API right inside the browser.
+- **Authentication:** Features an **"Authorize"** button where you can paste JWT tokens, API keys, or Basic Auth credentials to test protected endpoints.
+- **Cons:** Can feel cluttered when your API has dozens or hundreds of endpoints.
+
+#### 2. ReDoc (`/redoc`) — *The Polished Reader*
+- **Built for:** API consumers, technical writers, and public API reference portals (similar to Stripe or GitHub docs).
+- **Key Advantage:** A modern **3-column responsive layout**:
+  - **Left column:** Sticky navigation sidebar with all tags and endpoints.
+  - **Middle column:** Detailed parameter descriptions, data types, and explanations.
+  - **Right column (dark theme):** Code samples, example responses, and model schemas.
+- **Cons:** You cannot send requests or test endpoints live.
+
+---
+
+### Summary Recommendation
+
+- Use **`/docs` (Swagger UI)** when you are coding, building endpoints, and testing requests locally.
+- Use **`/redoc` (ReDoc)** when you want to read, review the API contracts, or share clean documentation with frontend teams or third-party developers.
