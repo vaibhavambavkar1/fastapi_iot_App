@@ -409,3 +409,114 @@ Both **Swagger UI** (`/docs`) and **ReDoc** (`/redoc`) read the exact same under
 
 - Use **`/docs` (Swagger UI)** when you are coding, building endpoints, and testing requests locally.
 - Use **`/redoc` (ReDoc)** when you want to read, review the API contracts, or share clean documentation with frontend teams or third-party developers.
+
+**Yes, absolutely!** In fact, your app **already uses generators in one place**, and there are several high-value scenarios in an IoT FastAPI application where Python generators are the ideal pattern.
+
+---
+
+### 1. Where Generators Are Already Used in Your App
+
+Look at [`app/db/session.py`](file:///home/pravi/Desktop/test_src/app/db/session.py):
+
+```python
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db         # <-- 1. Generates/yields database session to FastAPI
+    finally:
+        db.close()       # <-- 2. Resumes after request finishes to cleanly close connection
+```
+FastAPI uses this generator with `Depends(get_db)` to manage resource lifecycles (open on entry, close on exit).
+
+---
+
+### 2. Practical Real-World Generator Use Cases for This IoT App
+
+Here are 3 common ways to implement generators in your app:
+
+#### Scenario A: Streaming Large Telemetry Data / CSV Export (StreamingResponse)
+When exporting thousands of IoT telemetry records, loading all of them into a list in RAM (`records = db.query(...).all()`) can crash the server with Out-Of-Memory (OOM) errors.
+
+A **generator yields row by row (chunk by chunk)** as a stream:
+
+```python
+# In app/services/telemetry_service.py
+from collections.abc import Generator
+from sqlalchemy import select
+
+def stream_telemetry_csv(session: Session, device_id: int) -> Generator[str, None, None]:
+    yield "timestamp,metric,value\n"  # CSV Header
+    
+    # Stream from DB in batches of 500 without loading all into memory
+    stmt = select(TelemetryRecord).where(TelemetryRecord.device_id == device_id)
+    for record in session.scalars(stmt).yield_per(500):
+        yield f"{record.recorded_at.isoformat()},{record.metric},{record.value}\n"
+```
+
+In the endpoint:
+```python
+# In app/api/v1/endpoints/telemetry.py
+from fastapi.responses import StreamingResponse
+
+@router.get("/devices/{device_id}/export")
+def export_telemetry(device_id: int, db: Session = Depends(get_db)):
+    return StreamingResponse(
+        stream_telemetry_csv(db, device_id),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=device_{device_id}.csv"}
+    )
+```
+
+---
+
+#### Scenario B: Server-Sent Events (SSE) for Real-Time Device Telemetry
+For live IoT dashboard monitoring, a generator can stream new sensor readings to the browser/client over a persistent connection:
+
+```python
+import asyncio
+import json
+from collections.abc import AsyncGenerator
+
+async def simulate_live_sensor_stream(device_key: str) -> AsyncGenerator[str, None]:
+    while True:
+        data = {
+            "device_key": device_key,
+            "temperature": round(20.0 + random.uniform(-2, 5), 2),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        # SSE format requires "data: <content>\n\n"
+        yield f"data: {json.dumps(data)}\n\n"
+        await asyncio.sleep(1)  # wait 1 second before next reading
+
+@router.get("/devices/{device_key}/live")
+async def live_telemetry(device_key: str):
+    return StreamingResponse(
+        simulate_live_sensor_stream(device_key),
+        media_type="text/event-stream"
+    )
+```
+
+---
+
+#### Scenario C: Memory-Efficient Batch Processing in Repositories
+In [`app/repositories/device_repository.py`](file:///home/pravi/Desktop/test_src/app/repositories/device_repository.py), if you have a job syncing or validating 50,000 devices:
+
+```python
+def stream_all_devices(self, batch_size: int = 1000) -> Generator[Device, None, None]:
+    statement = select(Device).order_by(Device.id)
+    # SQLAlchemy's yield_per streams rows from the cursor in batches
+    for device in self._session.scalars(statement).yield_per(batch_size):
+        yield device
+```
+This keeps RAM usage flat near ~10MB even if there are 1,000,000 devices.
+
+---
+
+### Summary: When to use Generators in FastAPI IoT
+
+| Use Case | Generator Type | Benefit |
+|---|---|---|
+| **Database Session** | Sync Generator (`yield db`) | Automatic cleanup after each request (already implemented) |
+| **Telemetry CSV/JSON Export** | Generator + `StreamingResponse` | Constant $O(1)$ memory usage regardless of dataset size |
+| **Live Device Telemetry (SSE)** | `AsyncGenerator` + `text/event-stream` | Real-time push updates to IoT dashboard without websockets |
+| **Large Data Ingestion** | Chunked line generator | Process uploaded firmware/sensor files on the fly |
