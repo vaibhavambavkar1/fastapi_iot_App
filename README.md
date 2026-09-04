@@ -179,6 +179,35 @@ All routes are prefixed with `/api/v1`.
 | `GET` | `/api/v1/devices/{device_id}` | Retrieve device details by ID | `200 OK` |
 | `PATCH` | `/api/v1/devices/{device_id}` | Update device attributes | `200 OK` |
 | `DELETE`| `/api/v1/devices/{device_id}` | Delete a device and cascade-delete telemetry | `204 No Content` |
+| `GET` | `/api/v1/devices/{device_id}/telemetry/export` | **Generator Stream:** Export telemetry data (`?format=csv` or `?format=json`) | `200 OK` |
+| `GET` | `/api/v1/devices/{device_key}/telemetry/live` | **Async Generator (SSE):** Live real-time sensor events (`text/event-stream`) | `200 OK` |
+| `POST` | `/api/v1/devices/{device_id}/telemetry/ingest` | **Generator Ingest:** Line-by-line streaming CSV bulk ingestion | `201 Created` |
+
+### Sample Generator Requests
+
+#### 1. Ingest Large Telemetry CSV Stream
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/devices/1/telemetry/ingest" \
+  -H "Content-Type: text/csv" \
+  --data-binary "metric,value
+temperature,25.4
+humidity,62.1
+voltage,3.32"
+```
+
+#### 2. Stream Export Telemetry Records (CSV or NDJSON)
+```bash
+# Stream as CSV:
+curl -N "http://127.0.0.1:8000/api/v1/devices/1/telemetry/export?format=csv"
+
+# Stream as Newline-Delimited JSON (NDJSON):
+curl -N "http://127.0.0.1:8000/api/v1/devices/1/telemetry/export?format=json"
+```
+
+#### 3. Stream Live Device Events via SSE
+```bash
+curl -N "http://127.0.0.1:8000/api/v1/devices/sensor-001/telemetry/live"
+```
 
 ### Sample Request: Register Device
 
