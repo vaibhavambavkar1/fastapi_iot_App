@@ -8,14 +8,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+# Import models so SQLAlchemy can register them.
+from app import models as _models  # noqa: F401
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.core.logging import setup_logging
 from app.db.session import Base, engine
-
-# Import models so SQLAlchemy can register them.
-import app.models  # noqa: F401
 
 settings = get_settings()
 logger = logging.getLogger("app")

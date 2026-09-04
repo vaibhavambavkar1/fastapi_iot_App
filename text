@@ -302,3 +302,66 @@ alembic upgrade head
 | **Roll back to a specific revision** | `alembic downgrade <revision_id>` |
 | **Roll back all migrations** | `alembic downgrade base` |
 | **Generate empty migration (manual SQL/DDL)** | `alembic revision -m "add custom index"` |
+
+
+
+### What is `pyproject.toml`?
+
+[`pyproject.toml`](file:///home/pravi/Desktop/test_src/pyproject.toml) is the **official, modern Python standard** (defined in [PEP 518](https://peps.python.org/pep-0518/) and [PEP 621](https://peps.python.org/pep-0621/)) for managing project configuration and metadata.
+
+---
+
+### The Problem It Solves
+
+Historically, every Python tool required its own configuration file in the project root:
+- `.flake8` or `setup.cfg` for linting
+- `setup.py` for packaging
+- `.mypy.ini` for Mypy
+- `pytest.ini` for Pytest
+- `tox.ini` for Tox
+
+This caused **"config file sprawl"**. `pyproject.toml` unifies all these separate configurations into **one single, standardized TOML file**.
+
+---
+
+### How It Is Used in Your Project
+
+In your project, [`pyproject.toml`](file:///home/pravi/Desktop/test_src/pyproject.toml) contains settings for **Ruff** (formatting/linting) and **Mypy** (static typing):
+
+```toml
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = [
+    "B008",  # Allows FastAPI's Depends(...) in function signatures without warnings
+]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+warn_unused_ignores = true
+ignore_missing_imports = true
+```
+
+#### Why each section matters here:
+1. **`[tool.ruff]` & `[tool.ruff.lint]`**:
+   - Sets the line length to `88` (standard PEP 8 / Black style).
+   - Enables modern Python 3.12 syntax upgrades (`UP`), import sorting (`I`), bug prevention (`B`), and style rules (`E`, `F`).
+   - Ignores rule `B008`, which would otherwise raise false errors against FastAPI's standard pattern: `service: DeviceService = Depends(get_device_service)`.
+
+2. **`[tool.mypy]`**:
+   - Enables `pydantic.mypy` plugin so Mypy understands Pydantic v2 models and field validators.
+   - Prevents missing third-party stub errors with `ignore_missing_imports = true`.
+
+---
+
+### Summary of Benefits
+
+| Benefit | Description |
+|---|---|
+| **Single Source of Truth** | Tools like `ruff`, `mypy`, `pytest`, and `coverage` all read from one file. |
+| **Consistent Team Standards** | Ensures anyone running `ruff` or `mypy` on any machine (or in CI/CD) uses the exact same rules. |
+| **No CLI Boilerplate** | You can just type `ruff check .` or `mypy app` instead of passing dozens of command-line flags every time. |
