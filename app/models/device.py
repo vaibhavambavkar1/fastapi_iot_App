@@ -15,7 +15,7 @@ class Device(Base):
     )
 
     device_key: Mapped[str] = mapped_column(
-        String(120),
+        String(150),
         unique=True,
         index=True,
         nullable=False,
